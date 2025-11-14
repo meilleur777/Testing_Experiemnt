@@ -82,6 +82,11 @@
             background: #1d4ed8;
         }
         
+        .btn-primary:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+        
         .btn-secondary {
             background: white;
             color: #2563eb;
@@ -310,6 +315,40 @@
         .alert-box.info {
             background: #2563eb;
         }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .upload-status {
+            background: #eff6ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        .upload-status.uploading {
+            background: #fef3c7;
+        }
+        
+        .upload-status.success {
+            background: #d1fae5;
+        }
+        
+        .upload-status.error {
+            background: #fee2e2;
+        }
     </style>
 </head>
 <body>
@@ -329,6 +368,7 @@
                     <p style="margin-top: 10px;">• 소요 시간: 약 10-15분</p>
                     <p>• 세로 모드로 진행됩니다</p>
                     <p>• 편안한 자세로 참여해주세요</p>
+                    <p style="margin-top: 10px; color: #10b981; font-weight: 600;">✓ 결과는 자동으로 저장됩니다!</p>
                 </div>
                 
                 <div class="input-group">
@@ -403,7 +443,7 @@
                     <p>1. 두 가지 조건(Fixed UI / Adaptive UI)에서 동일한 과제를 수행합니다</p>
                     <p>2. 화면에 나타나는 버튼을 최대한 빠르고 정확하게 터치합니다</p>
                     <p>3. 각 조건마다 20번의 시도가 있습니다</p>
-                    <p>4. 두 조건 사이에 1분의 휴식 시간이 있습니다</p>
+                    <p>4. 두 조건 사이에 3초의 휴식 시간이 있습니다</p>
                 </div>
                 
                 <button class="btn-primary" id="btn-start-exp">실험 시작</button>
@@ -434,9 +474,9 @@
                 <h2>휴식 시간</h2>
                 <div class="instruction">
                     <p>첫 번째 실험이 완료되었습니다.</p>
-                    <p>1분간 휴식 후 두 번째 실험을 진행합니다.</p>
+                    <p>3초간 휴식 후 두 번째 실험을 진행합니다.</p>
                 </div>
-                <div class="countdown" id="rest-countdown">60</div>
+                <div class="countdown" id="rest-countdown">3</div>
                 <button class="btn-primary hidden" id="btn-continue">다음 실험 시작</button>
             </div>
             
@@ -445,7 +485,12 @@
                 <h2>실험 완료!</h2>
                 <div class="instruction">
                     <p>실험에 참여해 주셔서 감사합니다.</p>
-                    <p>아래 버튼을 눌러 결과 파일을 다운로드하고, 구글 폼에 업로드해주세요.</p>
+                    <p>결과를 자동으로 저장하고 있습니다...</p>
+                </div>
+                
+                <div class="upload-status" id="upload-status">
+                    <div class="loading"></div>
+                    <p style="margin-top: 10px;">결과 업로드 중...</p>
                 </div>
                 
                 <div class="result-card">
@@ -472,12 +517,20 @@
                     </div>
                 </div>
                 
-                <button class="btn-primary" id="btn-download">결과 파일 다운로드</button>
+                <button class="btn-primary hidden" id="btn-download-backup">백업 다운로드</button>
             </div>
         </div>
     </div>
 
     <script>
+        // CONFIGURATION - Replace with your repository details
+        var GITHUB_CONFIG = {
+            owner: 'meilleur777',  // Your GitHub username
+            repo: 'Testing_Experiemnt',  // Your repository name
+            branch: 'main',  // Branch name
+            token: 'YOUR_GITHUB_TOKEN_HERE'  // GitHub Personal Access Token (see instructions below)
+        };
+        
         // Global variables
         var participantData = {
             name: '',
@@ -510,7 +563,9 @@
                 alertBox.style.opacity = '0';
                 alertBox.style.transition = 'opacity 0.3s';
                 setTimeout(function() {
-                    document.body.removeChild(alertBox);
+                    if (alertBox.parentNode) {
+                        document.body.removeChild(alertBox);
+                    }
                 }, 300);
             }, 3000);
         }
@@ -525,7 +580,7 @@
             document.getElementById('btn-finish-calib').addEventListener('click', finishCalibration);
             document.getElementById('btn-start-exp').addEventListener('click', startMainExperiment);
             document.getElementById('btn-continue').addEventListener('click', continueToSecondExperiment);
-            document.getElementById('btn-download').addEventListener('click', downloadResults);
+            document.getElementById('btn-download-backup').addEventListener('click', downloadResults);
         });
         
         function showScreen(screenId) {
@@ -694,7 +749,6 @@
                 });
                 
                 this.classList.add('success');
-                var self = this;
                 setTimeout(function() {
                     currentTrial++;
                     updateExperimentStats();
@@ -795,7 +849,7 @@
         }
         
         function startRestTimer() {
-            var timeLeft = 60;
+            var timeLeft = 3;
             document.getElementById('rest-countdown').textContent = timeLeft;
             
             if (restInterval) {
@@ -848,8 +902,81 @@
                 document.getElementById('result-adaptive-time').textContent = Math.round(avgTime) + ' ms';
                 document.getElementById('result-adaptive-error').textContent = errorRate.toFixed(1) + '%';
             }
+            
+            // Auto-upload results to GitHub
+            uploadResultsToGitHub();
         }
         
+        // Upload results to GitHub
+        function uploadResultsToGitHub() {
+            var results = {
+                participant: {
+                    name: participantData.name,
+                    studentId: participantData.studentId,
+                    handedness: participantData.handedness,
+                    timestamp: participantData.timestamp
+                },
+                calibration: {
+                    reachablePoints: participantData.reachableZone.length,
+                    points: participantData.reachableZone
+                },
+                experiments: participantData.experiments.map(function(exp) {
+                    var validTrials = exp.data.filter(function(t) { return !t.error; });
+                    return {
+                        condition: exp.condition,
+                        order: exp.order,
+                        avgCompletionTime: validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length,
+                        errorRate: exp.data.filter(function(t) { return t.error; }).length / exp.data.length,
+                        trials: exp.data
+                    };
+                })
+            };
+            
+            var fileName = 'results/result_' + participantData.studentId + '_' + Date.now() + '.json';
+            var content = JSON.stringify(results, null, 2);
+            var contentBase64 = btoa(unescape(encodeURIComponent(content)));
+            
+            var uploadStatus = document.getElementById('upload-status');
+            uploadStatus.className = 'upload-status uploading';
+            uploadStatus.innerHTML = '<div class="loading"></div><p style="margin-top: 10px;">결과 업로드 중...</p>';
+            
+            // GitHub API request
+            var apiUrl = 'https://api.github.com/repos/' + GITHUB_CONFIG.owner + '/' + GITHUB_CONFIG.repo + '/contents/' + fileName;
+            
+            fetch(apiUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': 'token ' + GITHUB_CONFIG.token,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    message: 'Add experiment result for ' + participantData.studentId,
+                    content: contentBase64,
+                    branch: GITHUB_CONFIG.branch
+                })
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Upload failed: ' + response.status);
+                }
+            })
+            .then(function(data) {
+                uploadStatus.className = 'upload-status success';
+                uploadStatus.innerHTML = '<p style="color: #10b981; font-weight: 600;">✓ 결과가 성공적으로 저장되었습니다!</p><p style="margin-top: 5px; font-size: 14px;">실험에 참여해 주셔서 감사합니다.</p>';
+                showAlert('결과가 자동으로 저장되었습니다!', 'success');
+            })
+            .catch(function(error) {
+                console.error('Upload error:', error);
+                uploadStatus.className = 'upload-status error';
+                uploadStatus.innerHTML = '<p style="color: #ef4444; font-weight: 600;">⚠ 자동 업로드에 실패했습니다</p><p style="margin-top: 5px; font-size: 14px;">아래 버튼을 눌러 수동으로 다운로드해주세요.</p>';
+                document.getElementById('btn-download-backup').classList.remove('hidden');
+                showAlert('자동 저장에 실패했습니다. 백업 다운로드 버튼을 사용해주세요.', 'error');
+            });
+        }
+        
+        // Backup download function
         function downloadResults() {
             var results = {
                 participant: {
@@ -881,10 +1008,6 @@
             a.href = url;
             a.download = 'result_' + participantData.studentId + '_' + Date.now() + '.json';
             
-            // Add download attribute to prompt save dialog
-            a.setAttribute('download', 'result_' + participantData.studentId + '_' + Date.now() + '.json');
-            
-            // Safari compatibility: trigger click differently
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -893,7 +1016,7 @@
                 URL.revokeObjectURL(url);
             }, 100);
             
-            showAlert('결과 파일 다운로드를 시작합니다. 저장 위치를 선택해주세요.', 'success');
+            showAlert('백업 파일이 다운로드되었습니다.', 'success');
         }
     </script>
 </body>
