@@ -365,10 +365,16 @@
                 <div class="instruction">
                     <h3>실험 안내</h3>
                     <p>본 실험은 스마트폰에서 한 손 엄지 조작 시 버튼 배치에 따른 효율성을 측정합니다.</p>
-                    <p style="margin-top: 10px;">• 소요 시간: 약 10-15분</p>
+                    <p style="margin-top: 10px;">• 소요 시간: 약 3-5분 (테스트 버전)</p>
                     <p>• 세로 모드로 진행됩니다</p>
                     <p>• 편안한 자세로 참여해주세요</p>
-                    <p style="margin-top: 10px; color: #10b981; font-weight: 600;">✓ 결과는 자동으로 저장됩니다!</p>
+                    <p style="margin-top: 15px; padding: 10px; background: #fef3c7; border-radius: 6px; font-size: 14px;">
+                        <strong>📥 결과 파일 안내:</strong><br>
+                        실험 완료 후 결과 파일이 자동으로 <strong>다운로드 폴더</strong>에 저장됩니다.<br>
+                        • iPhone: 파일 앱 → 다운로드<br>
+                        • Android: 다운로드 폴더<br>
+                        • Mac: Finder → 다운로드
+                    </p>
                 </div>
                 
                 <div class="input-group">
@@ -422,13 +428,14 @@
             <!-- Screen 4: Calibration -->
             <div class="screen" id="screen-calibration">
                 <h2>도달 가능한 버튼을 터치하세요</h2>
+                <p style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">테스트 버전: 3x3 그리드</p>
                 <div class="progress">
                     <div class="progress-bar" id="calib-progress"></div>
                 </div>
                 <div class="stats">
                     <div class="stat-item">
                         <div class="stat-label">진행률</div>
-                        <div class="stat-value" id="calib-count">0/25</div>
+                        <div class="stat-value" id="calib-count">0/9</div>
                     </div>
                 </div>
                 <div class="experiment-area" id="calibration-area"></div>
@@ -442,7 +449,7 @@
                     <h3>실험 방법</h3>
                     <p>1. 두 가지 조건(Fixed UI / Adaptive UI)에서 동일한 과제를 수행합니다</p>
                     <p>2. 화면에 나타나는 버튼을 최대한 빠르고 정확하게 터치합니다</p>
-                    <p>3. 각 조건마다 20번의 시도가 있습니다</p>
+                    <p>3. 각 조건마다 <strong>5번</strong>의 시도가 있습니다 (테스트 버전)</p>
                     <p>4. 두 조건 사이에 3초의 휴식 시간이 있습니다</p>
                 </div>
                 
@@ -455,7 +462,7 @@
                 <div class="stats">
                     <div class="stat-item">
                         <div class="stat-label">진행</div>
-                        <div class="stat-value" id="exp-progress">0/20</div>
+                        <div class="stat-value" id="exp-progress">0/5</div>
                     </div>
                     <div class="stat-item">
                         <div class="stat-label">시간 (ms)</div>
@@ -486,6 +493,19 @@
                 <div class="instruction">
                     <p>실험에 참여해 주셔서 감사합니다.</p>
                     <p>아래 버튼을 눌러 결과 파일을 다운로드하고, 구글 폼에 업로드해주세요.</p>
+                </div>
+                
+                <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 15px 0; font-size: 14px;">
+                    <strong>📥 다운로드 안내:</strong><br>
+                    <p style="margin-top: 8px;">1. 아래 버튼 클릭</p>
+                    <p>2. Safari 확인창에서 "다운로드" 선택</p>
+                    <p>3. 파일이 <strong>다운로드 폴더</strong>에 저장됩니다</p>
+                    <p style="margin-top: 8px; color: #92400e;">
+                        • iPhone: 파일 앱 → 다운로드<br>
+                        • Android: 다운로드 폴더<br>
+                        • Mac: Finder → 다운로드
+                    </p>
+                    <p style="margin-top: 8px; font-weight: 600;">4. 구글 폼에서 다운로드한 파일을 업로드하세요</p>
                 </div>
                 
                 <div class="result-card">
@@ -625,8 +645,8 @@
             area.innerHTML = '';
             calibrationPoints = [];
             
-            var rows = 5;
-            var cols = 5;
+            var rows = 3;  // Reduced from 5 to 3 for testing
+            var cols = 3;  // Reduced from 5 to 3 for testing
             var areaWidth = area.clientWidth;
             var areaHeight = area.clientHeight;
             
@@ -666,13 +686,13 @@
         
         function updateCalibrationProgress() {
             var count = calibrationPoints.length;
-            document.getElementById('calib-count').textContent = count + '/25';
-            document.getElementById('calib-progress').style.width = (count / 25 * 100) + '%';
+            document.getElementById('calib-count').textContent = count + '/9';
+            document.getElementById('calib-progress').style.width = (count / 9 * 100) + '%';
         }
         
         function finishCalibration() {
-            if (calibrationPoints.length < 5) {
-                showAlert('최소 5개 이상의 버튼을 터치해주세요.', 'error');
+            if (calibrationPoints.length < 3) {
+                showAlert('최소 3개 이상의 버튼을 터치해주세요.', 'error');
                 return;
             }
             
@@ -702,7 +722,7 @@
         }
         
         function startTrial() {
-            if (currentTrial >= 20) {
+            if (currentTrial >= 5) {  // Reduced from 20 to 5 for testing
                 finishCondition();
                 return;
             }
@@ -807,7 +827,7 @@
         }
         
         function updateExperimentStats() {
-            document.getElementById('exp-progress').textContent = currentTrial + '/20';
+            document.getElementById('exp-progress').textContent = currentTrial + '/5';
             
             var validTrials = experimentData.filter(function(t) { return !t.error; });
             var avgTime = validTrials.length > 0 
