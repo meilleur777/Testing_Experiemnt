@@ -640,9 +640,7 @@
             <!-- Screen 6: Experiment (Fixed/Adaptive) -->
             <div class="screen" id="screen-experiment">
                 <div class="content-area" style="flex: 1; display: flex; flex-direction: column;">
-                    <h2 id="exp-title">실험 진행 중</h2>
-                    <p id="exp-condition-desc" style="font-size: 14px; color: #6b7280; text-align: center; margin-bottom: 10px;"></p>
-                    <!-- Removed stats display -->
+                    <!-- Removed condition title and description -->
                     <div class="experiment-area" id="experiment-area" style="flex: 1;"></div>
                 </div>
             </div>
@@ -1005,20 +1003,7 @@
             currentTrial = 0;
             experimentData = [];
             
-            var title = '';
-            var desc = '';
-            
-            if (condition === 'fixed') {
-                title = '조건 1: 원래 위치';
-                desc = '검색창이 원래 위치에 고정되어 있습니다';
-            } else {
-                title = '조건 2: 자동 이동';
-                desc = '검색창이 터치 가능한 영역으로 이동합니다';
-            }
-            
-            document.getElementById('exp-title').textContent = title;
-            document.getElementById('exp-condition-desc').textContent = desc;
-            
+            // No title or description shown during experiment
             showScreen('screen-experiment');
             startTrial();
         }
