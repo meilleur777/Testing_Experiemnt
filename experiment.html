@@ -597,21 +597,7 @@
                 </div>
                 
                 <div class="content-area" style="flex: 1; display: flex; flex-direction: column;">
-                    <h2>도달 가능한 영역을 그려주세요</h2>
-                    <p style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">손가락을 대고 움직여 파란색으로 칠해주세요</p>
-                    <div class="progress">
-                        <div class="progress-bar" id="calib-progress"></div>
-                    </div>
-                    <div class="stats">
-                        <div class="stat-item">
-                            <div class="stat-label">터치 횟수</div>
-                            <div class="stat-value" id="calib-count">0</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">목표</div>
-                            <div class="stat-value">10+</div>
-                        </div>
-                    </div>
+                    <!-- Removed title, description, progress bar, and stats -->
                     <div class="experiment-area calibration-area-full" id="calibration-area" style="position: relative; overflow: hidden; flex: 1;">
                         <canvas id="calibration-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></canvas>
                     </div>
@@ -1044,7 +1030,7 @@
             searchContainer.style.left = position.x + 'px';
             searchContainer.style.top = position.y + 'px';
             
-            // Create input field (initially hidden/inactive)
+            // Create input field
             var input = document.createElement('input');
             input.className = 'search-input';
             input.type = 'text';
@@ -1055,6 +1041,7 @@
             input.autocapitalize = 'off';
             input.spellcheck = false;
             input.style.caretColor = '#2563eb';
+            input.inputMode = 'text';
             
             // Create search button
             var searchBtn = document.createElement('button');
@@ -1070,31 +1057,37 @@
             searchInputStartTime = 0;
             var keyboardOpened = false;
             
-            // Search button click: Opens keyboard (can be clicked multiple times)
-            searchBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
+            // Search button click: Opens keyboard by focusing input
+            var openKeyboard = function(e) {
+                if (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
                 
-                // Always open keyboard when search button is clicked
                 if (!keyboardOpened) {
                     keyboardOpened = true;
                     searchInputStartTime = Date.now();
                 }
                 
-                // Focus input to open/reopen keyboard
-                input.focus();
-                input.click();
-            });
+                // Multiple attempts to open keyboard on iOS
+                setTimeout(function() {
+                    input.focus();
+                    input.click();
+                }, 0);
+            };
             
-            // Prevent search button from losing functionality
-            searchBtn.addEventListener('touchstart', function(e) {
-                e.preventDefault();
-            });
-            
+            searchBtn.addEventListener('click', openKeyboard);
             searchBtn.addEventListener('touchend', function(e) {
                 e.preventDefault();
-                // Trigger click to open keyboard
-                input.focus();
+                openKeyboard();
+            });
+            
+            // Prevent input from being directly tapped (only via button)
+            input.addEventListener('touchstart', function(e) {
+                if (!keyboardOpened) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             });
             
             // Input focus: Start typing timer
