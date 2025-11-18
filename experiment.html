@@ -315,6 +315,9 @@
             font-size: 20px;
             -webkit-appearance: none;
             appearance: none;
+            touch-action: manipulation;
+            pointer-events: auto;
+            z-index: 1000;
         }
         
         .search-btn:active {
@@ -1067,18 +1070,31 @@
             searchInputStartTime = 0;
             var keyboardOpened = false;
             
-            // Search button click: Opens keyboard
+            // Search button click: Opens keyboard (can be clicked multiple times)
             searchBtn.addEventListener('click', function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 
+                // Always open keyboard when search button is clicked
                 if (!keyboardOpened) {
-                    // First click: Open keyboard
                     keyboardOpened = true;
                     searchInputStartTime = Date.now();
-                    input.focus();
-                    input.click();
                 }
+                
+                // Focus input to open/reopen keyboard
+                input.focus();
+                input.click();
+            });
+            
+            // Prevent search button from losing functionality
+            searchBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+            });
+            
+            searchBtn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                // Trigger click to open keyboard
+                input.focus();
             });
             
             // Input focus: Start typing timer
