@@ -795,14 +795,22 @@
                 document.body.style.height = '852px';
             });
             
-            // Detect keyboard open/close
+            // Detect keyboard open/close and lock layout
             var originalHeight = window.innerHeight;
             window.addEventListener('focusin', function() {
                 document.body.classList.add('keyboard-open');
+                var expArea = document.getElementById('experiment-area');
+                if (expArea) {
+                    expArea.classList.add('keyboard-active');
+                }
             });
             
             window.addEventListener('focusout', function() {
                 document.body.classList.remove('keyboard-open');
+                var expArea = document.getElementById('experiment-area');
+                if (expArea) {
+                    expArea.classList.remove('keyboard-active');
+                }
                 // Force scroll to top
                 window.scrollTo(0, 0);
             });
@@ -1052,7 +1060,7 @@
             // Generate search bar position
             var position = generateSearchBarPosition(currentCondition);
             
-            // Create search container
+            // Create search container (only input, no button inside)
             var searchContainer = document.createElement('div');
             searchContainer.className = 'search-container';
             searchContainer.style.left = position.x + 'px';
@@ -1062,7 +1070,7 @@
             var input = document.createElement('input');
             input.className = 'search-input';
             input.type = 'text';
-            input.placeholder = '입력...';
+            input.placeholder = '검색어를 입력하세요...';
             input.maxLength = 999; // Allow unlimited typing
             input.autocomplete = 'off';
             input.autocorrect = 'off';
@@ -1071,14 +1079,20 @@
             input.style.caretColor = '#2563eb';
             input.inputMode = 'text';
             
-            // Create search button
+            // Create search button (separate, outside container)
             var searchBtn = document.createElement('button');
             searchBtn.className = 'search-btn';
-            searchBtn.textContent = '🔍';
+            searchBtn.textContent = '검색';
             
             searchContainer.appendChild(input);
-            searchContainer.appendChild(searchBtn);
             area.appendChild(searchContainer);
+            
+            // Position search button based on condition
+            var buttonPosition = generateSearchButtonPosition(currentCondition);
+            searchBtn.style.left = buttonPosition.x + 'px';
+            searchBtn.style.top = buttonPosition.y + 'px';
+            
+            area.appendChild(searchBtn); // Button added separately to area
             
             // Start timing
             trialStartTime = Date.now();
