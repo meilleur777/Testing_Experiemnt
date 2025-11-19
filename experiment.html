@@ -1183,35 +1183,27 @@
         
         function generateSearchBarPosition(condition) {
             var area = document.getElementById('experiment-area');
-            var areaWidth = area.clientWidth;
-            var areaHeight = area.clientHeight;
+            var areaWidth = area.clientWidth; // 393px
+            var areaHeight = area.clientHeight; // 852px
             
-            // Search bar is now always at the top of the window
-            var searchBarWidth = 240;
+            var searchBarWidth = 373; // Full width minus 20px padding
             var searchBarHeight = 50;
-            var topPosition = 10; // 10px from top
+            
+            var keyboardHeight = 336; // iPhone keyboard height
+            var searchBarY = areaHeight - keyboardHeight - searchBarHeight - 10; // 10px gap above keyboard
             
             if (condition === 'fixed') {
                 // Fixed position: Top center
-                var x = (areaWidth - searchBarWidth) / 2;
-                var y = topPosition;
+                var x = (areaWidth - searchBarWidth) / 2; // 10px from edges
+                var y = 10; // 10px from top
                 
                 return {x: x, y: y, zone: 'top-fixed'};
             } else {
-                // Adaptive: Also at top but can vary horizontally based on handedness
-                var x;
+                // Adaptive: Just above keyboard, full width
+                var x = (areaWidth - searchBarWidth) / 2; // 10px from edges
+                var y = searchBarY; // Just above keyboard
                 
-                if (participantData.handedness === 'left') {
-                    // Left-handed: Position on left side
-                    x = 10;
-                } else {
-                    // Right-handed: Position on right side
-                    x = areaWidth - searchBarWidth - 10;
-                }
-                
-                var y = topPosition;
-                
-                return {x: x, y: y, zone: 'top-adaptive-' + participantData.handedness};
+                return {x: x, y: y, zone: 'above-keyboard'};
             }
         }
         
