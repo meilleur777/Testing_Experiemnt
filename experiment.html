@@ -310,19 +310,20 @@
         }
         
         .search-btn {
+            position: absolute;
             background: #2563eb;
             color: white;
             border: none;
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
+            width: 80px;
+            height: 44px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             flex-shrink: 0;
-            margin-left: 8px;
-            font-size: 20px;
+            font-size: 16px;
+            font-weight: 600;
             -webkit-appearance: none;
             appearance: none;
             touch-action: manipulation;
@@ -1028,50 +1029,30 @@
             currentTrial = 0;
             experimentData = [];
             
+            console.log('Starting condition:', condition, 'Trial count:', currentTrial);
+            
             // No title or description shown during experiment
             showScreen('screen-experiment');
-            startTrial();
-        }
-        
-        function startTrial() {
-            if (currentTrial >= 5) {  // Reduced from 20 to 5 for testing
-                finishCondition();
-                return;
-            }
             
+            // Clear the experiment area from previous condition (including old input with accumulated event listeners)
             var area = document.getElementById('experiment-area');
             area.innerHTML = '';
             
-            // Remove previous event listener
-            if (areaClickHandler) {
-                area.removeEventListener('click', areaClickHandler);
-            }
-            
-            // Get string from pool based on current trial and condition
-            var trialIndex = (currentExperimentIndex * 5) + currentTrial;
-            currentTargetString = participantData.stringPool[trialIndex % participantData.stringPool.length];
-            
-            // Display target string
-            var targetDisplay = document.createElement('div');
-            targetDisplay.className = 'target-text';
-            targetDisplay.textContent = currentTargetString;
-            area.appendChild(targetDisplay);
-            
-            // Generate search bar position
+            // Create search bar once for this condition with FRESH input element
             var position = generateSearchBarPosition(currentCondition);
             
-            // Create search container (only input, no button inside)
             var searchContainer = document.createElement('div');
             searchContainer.className = 'search-container';
+            searchContainer.id = 'search-container-fixed';
             searchContainer.style.left = position.x + 'px';
             searchContainer.style.top = position.y + 'px';
             
-            // Create input field
             var input = document.createElement('input');
             input.className = 'search-input';
+            input.id = 'search-input-main';
             input.type = 'text';
             input.placeholder = '검색어를 입력하세요...';
-            input.maxLength = 999; // Allow unlimited typing
+            input.maxLength = 999;
             input.autocomplete = 'off';
             input.autocorrect = 'off';
             input.autocapitalize = 'off';
@@ -1079,18 +1060,147 @@
             input.style.caretColor = '#2563eb';
             input.inputMode = 'text';
             
+            searchContainer.appendChild(input);
+            area.appendChild(searchContainer);
+            
+            console.log('Search container created with fresh input element, starting first trial');
+            startTrial();
+        }
+        
+        function generateSearchBarPosition(condition) {
+            // Search bar is ALWAYS at the top, full width
+            // Same position in both Fixed and Adaptive conditions
+            var x = 0;
+            var y = 0; // Top of window (no margin)
+            
+            return {x: x, y: y, zone: 'top-full-width'};
+        }
+        
+        function generateSearchButtonPosition(condition) {
+            var area = document.getElementById('experiment-area');
+            var areaWidth = area.clientWidth; // 393px
+            
+            var buttonWidth = 80;
+            var buttonHeight = 44;
+            var searchBarHeight = 50; // Height of search bar at top
+            
+            if (condition === 'fixed') {
+                // Fixed position: Top-right corner, aligned with search bar
+                var x = areaWidth - buttonWidth - 10; // 10px from right
+                var y = 5; // Aligned with search bar (small top margin)
+                
+                return {x: x, y: y, zone: 'top-right-fixed'};
+            } else {
+                // Adaptive: RANDOMIZE button position within reachable zone
+                if (participantData.reachableZone.length === 0) {
+                    // Fallback to fixed position if no calibration data
+                    var x = areaWidth - buttonWidth - 10;
+                    var y = 5;
+                    return {x: x, y: y, zone: 'top-right-fixed'};
+                }
+                
+                var reachable = participantData.reachableZone;
+                
+                // Filter points below search bar
+                var validPoints = reachable.filter(function(point) {
+                    return point.y > searchBarHeight + 20; // Below search bar
+                });
+                
+                if (validPoints.length === 0) {
+                    validPoints = reachable;
+                }
+                
+                var attempts = 0;
+                var maxAttempts = 50;
+                
+                while (attempts < maxAttempts) {
+                    // Pick a random point from reachable zone
+                    var point = validPoints[Math.floor(Math.random() * validPoints.length)];
+                    
+                    // Center button around this point
+                    var x = Math.max(10, Math.min(areaWidth - buttonWidth - 10, point.x - buttonWidth / 2));
+                    var y = Math.max(searchBarHeight + 20, Math.min(800, point.y - buttonHeight / 2));
+                    
+                    // Make sure there's distance from edges
+                    if (x > 20 && x < areaWidth - buttonWidth - 20 && y > searchBarHeight + 20) {
+                        return {x: x, y: y, zone: 'adaptive-random'};
+                    }
+                    
+                    attempts++;
+                }
+                
+                // Fallback: use average position of reachable zone
+                var avgX = validPoints.reduce(function(sum, p) { return sum + p.x; }, 0) / validPoints.length;
+                var avgY = validPoints.reduce(function(sum, p) { return sum + p.y; }, 0) / validPoints.length;
+                
+                var x = Math.max(10, Math.min(areaWidth - buttonWidth - 10, avgX - buttonWidth / 2));
+                var y = Math.max(searchBarHeight + 20, Math.min(800, avgY - buttonHeight / 2));
+                
+                return {x: x, y: y, zone: 'adaptive-fallback'};
+            }
+        }
+        
+        function startTrial() {
+            console.log('startTrial called - currentTrial:', currentTrial, 'currentCondition:', currentCondition);
+            
+            if (currentTrial >= 5) {  // Reduced from 20 to 5 for testing
+                console.log('Condition complete, finishing...');
+                finishCondition();
+                return;
+            }
+            
+            var area = document.getElementById('experiment-area');
+            
+            // Remove previous event listener
+            if (areaClickHandler) {
+                area.removeEventListener('click', areaClickHandler);
+            }
+            
+            // Clear only the dynamic elements (keep search bar)
+            var searchContainer = document.getElementById('search-container-fixed');
+            var targetDisplay = area.querySelector('.target-text');
+            var oldButton = area.querySelector('.search-btn');
+            
+            if (targetDisplay) targetDisplay.remove();
+            if (oldButton) oldButton.remove();
+            
+            // Get string from pool based on current trial and condition
+            var trialIndex = (currentExperimentIndex * 5) + currentTrial;
+            currentTargetString = participantData.stringPool[trialIndex % participantData.stringPool.length];
+            
+            console.log('Trial', currentTrial + 1, 'Target string:', currentTargetString);
+            
+            // Display target string
+            targetDisplay = document.createElement('div');
+            targetDisplay.className = 'target-text';
+            targetDisplay.textContent = currentTargetString;
+            area.appendChild(targetDisplay);
+            
+            // Get the existing search input and clone it to remove all old event listeners
+            var oldInput = document.getElementById('search-input-main');
+            if (!oldInput) {
+                console.error('Search input not found!');
+                return;
+            }
+            
+            // Clone the input to remove all event listeners
+            var input = oldInput.cloneNode(true);
+            oldInput.parentNode.replaceChild(input, oldInput);
+            
+            input.value = ''; // Clear previous input
+            input.focus();
+            
             // Create search button (separate, outside container)
             var searchBtn = document.createElement('button');
             searchBtn.className = 'search-btn';
             searchBtn.textContent = '검색';
             
-            searchContainer.appendChild(input);
-            area.appendChild(searchContainer);
-            
             // Position search button based on condition
             var buttonPosition = generateSearchButtonPosition(currentCondition);
             searchBtn.style.left = buttonPosition.x + 'px';
             searchBtn.style.top = buttonPosition.y + 'px';
+            
+            console.log('Button position:', buttonPosition);
             
             area.appendChild(searchBtn); // Button added separately to area
             
@@ -1161,17 +1271,21 @@
                 var isCorrect = userInput === currentTargetString.toLowerCase();
                 var typingTime = searchInputStartTime > 0 ? (Date.now() - searchInputStartTime) : 0;
                 
+                // Get button position for logging
+                var buttonPosition = generateSearchButtonPosition(currentCondition);
+                
                 experimentData.push({
                     trial: currentTrial + 1,
                     targetString: currentTargetString,
                     userInput: userInput,
-                    position: position,
+                    buttonPosition: buttonPosition,
                     completionTime: completionTime,
                     typingTime: typingTime,
                     error: !isCorrect
                 });
                 
                 // Visual feedback
+                var searchContainer = document.getElementById('search-container-fixed');
                 if (isCorrect) {
                     searchContainer.style.borderColor = '#10b981';
                     searchContainer.style.background = '#d1fae5';
@@ -1184,6 +1298,10 @@
                 input.blur();
                 
                 setTimeout(function() {
+                    // Reset search container styling
+                    searchContainer.style.borderColor = '';
+                    searchContainer.style.background = '';
+                    
                     currentTrial++;
                     updateExperimentStats();
                     startTrial();
@@ -1204,26 +1322,12 @@
         }
         
         function generateSearchBarPosition(condition) {
-            var area = document.getElementById('experiment-area');
-            var areaHeight = area.clientHeight; // 852px
+            // Search bar is ALWAYS at the top, full width
+            // Same position in both Fixed and Adaptive conditions
+            var x = 0;
+            var y = 0; // Top of window (no margin)
             
-            var searchBarHeight = 50;
-            var keyboardHeight = 336; // iPhone keyboard height
-            var searchBarY = areaHeight - keyboardHeight - searchBarHeight - 10; // 10px gap above keyboard
-            
-            if (condition === 'fixed') {
-                // Fixed position: Top, full width (393px)
-                var x = 0; // No left margin
-                var y = 10; // 10px from top
-                
-                return {x: x, y: y, zone: 'top-fixed'};
-            } else {
-                // Adaptive: Just above keyboard, full width (393px)
-                var x = 0; // No left margin
-                var y = searchBarY; // Just above keyboard
-                
-                return {x: x, y: y, zone: 'above-keyboard'};
-            }
+            return {x: x, y: y, zone: 'top-full-width'};
         }
         
         function updateExperimentStats() {
@@ -1240,18 +1344,24 @@
         }
         
         function finishCondition() {
+            console.log('finishCondition called - currentExperimentIndex:', currentExperimentIndex, 'experimentOrder:', experimentOrder);
+            
             participantData.experiments.push({
                 condition: currentCondition,
                 order: currentExperimentIndex + 1,
                 data: experimentData
             });
             
+            console.log('Saved', experimentData.length, 'trials for condition:', currentCondition);
+            
             currentExperimentIndex++;
             
             if (currentExperimentIndex < experimentOrder.length) {
+                console.log('Moving to rest screen before condition', currentExperimentIndex + 1);
                 showScreen('screen-rest');
                 startRestTimer();
             } else {
+                console.log('All conditions complete, showing results');
                 showResults();
             }
         }
