@@ -55,6 +55,11 @@
             padding: 50px 20px 15px 20px;
             text-align: center;
             flex-shrink: 0;
+            display: none; /* Hidden during experiment */
+        }
+        
+        .header.show {
+            display: block;
         }
         
         .header h1 {
@@ -76,6 +81,11 @@
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             position: relative;
+        }
+        
+        .content.full-screen {
+            padding: 0;
+            height: 852px;
         }
         
         .button-area {
@@ -327,7 +337,7 @@
         
         .target-text {
             position: absolute;
-            top: 15px;
+            top: 60px;
             left: 50%;
             transform: translateX(-50%);
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
@@ -339,6 +349,15 @@
             color: #1f2937;
             box-shadow: 0 6px 12px rgba(0,0,0,0.1);
             border: 2px solid #fbbf24;
+            z-index: 100;
+        }
+        
+        .search-bar-top {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
         }
         
         .target-btn:active {
@@ -512,12 +531,12 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header show">
             <h1>Thumb-Adaptive Search UI Experiment</h1>
             <p>iPhone 16 최적화 버전</p>
         </div>
         
-        <div class="content">
+        <div class="content" id="main-content">
             <!-- Screen 1: Welcome & Info -->
             <div class="screen active" id="screen-welcome">
                 <div class="button-area">
@@ -628,10 +647,7 @@
             
             <!-- Screen 6: Experiment (Fixed/Adaptive) -->
             <div class="screen" id="screen-experiment">
-                <div class="content-area" style="flex: 1; display: flex; flex-direction: column;">
-                    <!-- Removed condition title and description -->
-                    <div class="experiment-area" id="experiment-area" style="flex: 1;"></div>
-                </div>
+                <div class="experiment-area" id="experiment-area"></div>
             </div>
             
             <!-- Screen 7: Rest -->
@@ -798,6 +814,18 @@
             }
             document.getElementById(screenId).classList.add('active');
             currentScreen = screenId;
+            
+            // Hide header and make content full-screen for experiment and calibration
+            var header = document.querySelector('.header');
+            var content = document.getElementById('main-content');
+            
+            if (screenId === 'screen-experiment' || screenId === 'screen-calibration') {
+                header.classList.remove('show');
+                content.classList.add('full-screen');
+            } else {
+                header.classList.add('show');
+                content.classList.remove('full-screen');
+            }
         }
         
         function startExperiment() {
@@ -931,11 +959,10 @@
         
         function updateCalibrationProgress() {
             var count = calibrationPoints.length;
-            document.getElementById('calib-count').textContent = count;
+            // Progress tracking removed from UI but still tracked internally
             
-            // Progress bar fills up to 20 touches (after that it's 100%)
-            var progress = Math.min(count / 20 * 100, 100);
-            document.getElementById('calib-progress').style.width = progress + '%';
+            // Progress bar and stats are now hidden
+            // Data still collected for validation
         }
         
         function finishCalibration() {
@@ -1035,7 +1062,7 @@
             input.className = 'search-input';
             input.type = 'text';
             input.placeholder = '입력...';
-            input.maxLength = 3;
+            input.maxLength = 999; // Allow unlimited typing
             input.autocomplete = 'off';
             input.autocorrect = 'off';
             input.autocapitalize = 'off';
@@ -1159,62 +1186,32 @@
             var areaWidth = area.clientWidth;
             var areaHeight = area.clientHeight;
             
-            // Leave space for target text at top and keyboard at bottom
-            var topMargin = 80;
-            var bottomMargin = 320; // Reserve space for keyboard (approx 300-350px)
+            // Search bar is now always at the top of the window
             var searchBarWidth = 240;
             var searchBarHeight = 50;
-            var availableHeight = areaHeight - topMargin - bottomMargin;
+            var topPosition = 10; // 10px from top
             
             if (condition === 'fixed') {
-                // Fixed position: Top center, right below target text
-                // Make sure it's above keyboard area
+                // Fixed position: Top center
                 var x = (areaWidth - searchBarWidth) / 2;
-                var y = topMargin + 10; // 10px below target text
+                var y = topPosition;
                 
                 return {x: x, y: y, zone: 'top-fixed'};
             } else {
-                // Adaptive - position within reachable zone, but above keyboard
-                if (participantData.reachableZone.length === 0) {
-                    return generateSearchBarPosition('fixed');
+                // Adaptive: Also at top but can vary horizontally based on handedness
+                var x;
+                
+                if (participantData.handedness === 'left') {
+                    // Left-handed: Position on left side
+                    x = 10;
+                } else {
+                    // Right-handed: Position on right side
+                    x = areaWidth - searchBarWidth - 10;
                 }
                 
-                // Filter reachable points to only those above keyboard area
-                var reachable = participantData.reachableZone.filter(function(point) {
-                    return point.y < (areaHeight - bottomMargin);
-                });
+                var y = topPosition;
                 
-                if (reachable.length === 0) {
-                    // Fallback to fixed position if no points above keyboard
-                    return generateSearchBarPosition('fixed');
-                }
-                
-                var attempts = 0;
-                var maxAttempts = 50;
-                
-                while (attempts < maxAttempts) {
-                    var point = reachable[Math.floor(Math.random() * reachable.length)];
-                    
-                    // Check if search bar fits
-                    var x = Math.max(10, Math.min(areaWidth - searchBarWidth - 10, point.x - searchBarWidth / 2));
-                    var y = Math.max(topMargin, Math.min(areaHeight - bottomMargin - searchBarHeight, point.y - searchBarHeight / 2));
-                    
-                    // Make sure it's not too close to target text and is above keyboard
-                    if (y > topMargin + 60 && y < (areaHeight - bottomMargin - searchBarHeight)) {
-                        return {x: x, y: y, zone: 'adaptive'};
-                    }
-                    
-                    attempts++;
-                }
-                
-                // Fallback: use center of reachable zone above keyboard
-                var avgX = reachable.reduce(function(sum, p) { return sum + p.x; }, 0) / reachable.length;
-                var avgY = reachable.reduce(function(sum, p) { return sum + p.y; }, 0) / reachable.length;
-                
-                var x = Math.max(10, Math.min(areaWidth - searchBarWidth - 10, avgX - searchBarWidth / 2));
-                var y = Math.max(topMargin + 60, Math.min(areaHeight - bottomMargin - searchBarHeight - 20, avgY - searchBarHeight / 2));
-                
-                return {x: x, y: y, zone: 'adaptive'};
+                return {x: x, y: y, zone: 'top-adaptive-' + participantData.handedness};
             }
         }
         
