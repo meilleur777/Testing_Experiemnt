@@ -328,7 +328,7 @@
             appearance: none;
             touch-action: manipulation;
             pointer-events: auto;
-            z-index: 1000;
+            z-index: 50000;
         }
         
         .search-btn:active {
@@ -338,9 +338,9 @@
         
         .target-text {
             position: fixed; /* Changed from absolute to fixed */
-            top: 50%;
+            top: 70px; /* Positioned below search bar instead of center */
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
             padding: 20px 40px;
             border-radius: 20px;
@@ -1085,10 +1085,12 @@
         function generateSearchButtonPosition(condition) {
             var area = document.getElementById('experiment-area');
             var areaWidth = area.clientWidth; // 393px
+            var areaHeight = area.clientHeight || 852; // Full height
             
             var buttonWidth = 80;
             var buttonHeight = 44;
             var searchBarHeight = 50; // Height of search bar at top
+            var targetStringHeight = 120; // Reserve space for target string below search bar
             
             if (condition === 'fixed') {
                 // Fixed position: Top-right corner, aligned with search bar
@@ -1107,17 +1109,25 @@
                 
                 var reachable = participantData.reachableZone;
                 
-                // Filter points below search bar
+                // Filter points: below search bar + target string area
+                var minY = searchBarHeight + targetStringHeight + 10;
                 var validPoints = reachable.filter(function(point) {
-                    return point.y > searchBarHeight + 20; // Below search bar
+                    return point.y > minY; // Below search bar and target string
                 });
+                
+                if (validPoints.length === 0) {
+                    // If no valid points, use all points below search bar
+                    validPoints = reachable.filter(function(point) {
+                        return point.y > searchBarHeight + 20;
+                    });
+                }
                 
                 if (validPoints.length === 0) {
                     validPoints = reachable;
                 }
                 
                 var attempts = 0;
-                var maxAttempts = 50;
+                var maxAttempts = 100;
                 
                 while (attempts < maxAttempts) {
                     // Pick a random point from reachable zone
@@ -1125,10 +1135,13 @@
                     
                     // Center button around this point
                     var x = Math.max(10, Math.min(areaWidth - buttonWidth - 10, point.x - buttonWidth / 2));
-                    var y = Math.max(searchBarHeight + 20, Math.min(800, point.y - buttonHeight / 2));
+                    var y = Math.max(minY, Math.min(areaHeight - buttonHeight - 10, point.y - buttonHeight / 2));
                     
                     // Make sure there's distance from edges
-                    if (x > 20 && x < areaWidth - buttonWidth - 20 && y > searchBarHeight + 20) {
+                    if (x > 10 && 
+                        x < areaWidth - buttonWidth - 10 && 
+                        y > minY && 
+                        y < areaHeight - buttonHeight - 10) {
                         return {x: x, y: y, zone: 'adaptive-random'};
                     }
                     
@@ -1140,7 +1153,7 @@
                 var avgY = validPoints.reduce(function(sum, p) { return sum + p.y; }, 0) / validPoints.length;
                 
                 var x = Math.max(10, Math.min(areaWidth - buttonWidth - 10, avgX - buttonWidth / 2));
-                var y = Math.max(searchBarHeight + 20, Math.min(800, avgY - buttonHeight / 2));
+                var y = Math.max(minY, Math.min(areaHeight - buttonHeight - 10, avgY - buttonHeight / 2));
                 
                 return {x: x, y: y, zone: 'adaptive-fallback'};
             }
