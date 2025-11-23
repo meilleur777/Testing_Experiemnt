@@ -634,9 +634,10 @@
                     <h2>본 실험 안내</h2>
                     <div class="instruction">
                         <h3>실험 방법</h3>
-                        <p>1. 두 가지 조건에서 동일한 과제를 수행합니다</p>
-                        <p style="margin-left: 20px;">• <strong>조건 1:</strong> 검색창이 원래 위치에 고정</p>
-                        <p style="margin-left: 20px;">• <strong>조건 2:</strong> 검색창이 터치 가능한 영역으로 자동 이동</p>
+                        <p>1. 세 가지 조건에서 동일한 과제를 수행합니다</p>
+                        <p style="margin-left: 20px;">• <strong>조건 1:</strong> 검색 버튼이 상단 우측에 고정</p>
+                        <p style="margin-left: 20px;">• <strong>조건 2:</strong> 검색 버튼이 터치 가능한 영역으로 자동 이동</p>
+                        <p style="margin-left: 20px;">• <strong>조건 3:</strong> 검색 버튼이 하단 우측에 고정</p>
                         <p style="margin-top: 10px;">2. 화면에 표시되는 <strong>3글자 영문</strong>을 검색창에 입력하고 리턴 키를 누릅니다</p>
                         <p>3. <strong>⚠️ 중요: 검색창은 🔍 검색 버튼을 터치해야만 사용할 수 있습니다</strong></p>
                         <p>4. 키보드가 열리면 문자를 입력하고 리턴(Return) 키를 눌러주세요</p>
@@ -660,8 +661,8 @@
                 <div class="content-area">
                     <h2>휴식 시간</h2>
                     <div class="instruction">
-                        <p>첫 번째 실험이 완료되었습니다.</p>
-                        <p>3초간 휴식 후 두 번째 실험을 진행합니다.</p>
+                        <p id="rest-message">실험이 완료되었습니다.</p>
+                        <p>3초간 휴식 후 다음 실험을 진행합니다.</p>
                     </div>
                     <div class="countdown" id="rest-countdown">3</div>
                 </div>
@@ -686,7 +687,7 @@
                     </div>
                     
                     <div class="result-card">
-                        <h3>조건 1: 원래 위치 (Fixed)</h3>
+                        <h3>조건 1: 상단 우측 (Top-Right Fixed)</h3>
                         <div class="result-row">
                             <span>평균 완료 시간</span>
                             <span id="result-fixed-time">-</span>
@@ -706,6 +707,18 @@
                         <div class="result-row">
                             <span>오류율</span>
                             <span id="result-adaptive-error">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <h3>조건 3: 하단 우측 (Bottom-Right Fixed)</h3>
+                        <div class="result-row">
+                            <span>평균 완료 시간</span>
+                            <span id="result-bottom-time">-</span>
+                        </div>
+                        <div class="result-row">
+                            <span>오류율</span>
+                            <span id="result-bottom-error">-</span>
                         </div>
                     </div>
                 </div>
@@ -999,8 +1012,21 @@
             
             participantData.reachableZone = calibrationPoints;
             
-            // Randomize experiment order (counterbalancing)
-            experimentOrder = Math.random() < 0.5 ? ['fixed', 'adaptive'] : ['adaptive', 'fixed'];
+            // Three conditions: fixed (top-right), adaptive (reachable zone), bottom-right (fixed bottom)
+            // Randomize order using all 6 possible permutations
+            var allOrders = [
+                ['fixed', 'adaptive', 'bottom-right'],
+                ['fixed', 'bottom-right', 'adaptive'],
+                ['adaptive', 'fixed', 'bottom-right'],
+                ['adaptive', 'bottom-right', 'fixed'],
+                ['bottom-right', 'fixed', 'adaptive'],
+                ['bottom-right', 'adaptive', 'fixed']
+            ];
+            
+            var randomIndex = Math.floor(Math.random() * allOrders.length);
+            experimentOrder = allOrders[randomIndex];
+            
+            console.log('Experiment order:', experimentOrder);
             
             // Prepare string pools for this participant based on Latin Square
             prepareStringPools();
@@ -1096,6 +1122,12 @@
                 var y = 5; // Aligned with search bar (small top margin)
                 
                 return {x: x, y: y, zone: 'top-right-fixed'};
+            } else if (condition === 'bottom-right') {
+                // Bottom-right position: Fixed at bottom-right corner
+                var x = areaWidth - buttonWidth - 10; // 10px from right
+                var y = areaHeight - buttonHeight - 50; // 50px from bottom (above keyboard area)
+                
+                return {x: x, y: y, zone: 'bottom-right-fixed'};
             } else {
                 // Adaptive: RANDOMIZE button position within reachable zone
                 if (participantData.reachableZone.length === 0) {
@@ -1366,6 +1398,13 @@
         
         function startRestTimer() {
             var timeLeft = 3;
+            
+            // Update message based on current progress
+            var conditionNumber = currentExperimentIndex; // 1 or 2 (0-indexed, so after 1st or 2nd condition)
+            var totalConditions = experimentOrder.length;
+            document.getElementById('rest-message').textContent = 
+                conditionNumber + '번째 실험이 완료되었습니다. (총 ' + totalConditions + '개 중)';
+            
             document.getElementById('rest-countdown').textContent = timeLeft;
             
             if (restInterval) {
@@ -1384,7 +1423,8 @@
         }
         
         function continueToSecondExperiment() {
-            startCondition(experimentOrder[1]);
+            // Start the next condition in the order
+            startCondition(experimentOrder[currentExperimentIndex]);
         }
         
         function showResults() {
@@ -1392,18 +1432,21 @@
             
             var fixedExp = null;
             var adaptiveExp = null;
+            var bottomRightExp = null;
             
             for (var i = 0; i < participantData.experiments.length; i++) {
                 if (participantData.experiments[i].condition === 'fixed') {
                     fixedExp = participantData.experiments[i];
                 } else if (participantData.experiments[i].condition === 'adaptive') {
                     adaptiveExp = participantData.experiments[i];
+                } else if (participantData.experiments[i].condition === 'bottom-right') {
+                    bottomRightExp = participantData.experiments[i];
                 }
             }
             
             if (fixedExp) {
                 var validTrials = fixedExp.data.filter(function(t) { return !t.error; });
-                var avgTime = validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length;
+                var avgTime = validTrials.length > 0 ? validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length : 0;
                 var errorRate = (fixedExp.data.filter(function(t) { return t.error; }).length / fixedExp.data.length * 100);
                 
                 document.getElementById('result-fixed-time').textContent = Math.round(avgTime) + ' ms';
@@ -1412,11 +1455,20 @@
             
             if (adaptiveExp) {
                 var validTrials = adaptiveExp.data.filter(function(t) { return !t.error; });
-                var avgTime = validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length;
+                var avgTime = validTrials.length > 0 ? validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length : 0;
                 var errorRate = (adaptiveExp.data.filter(function(t) { return t.error; }).length / adaptiveExp.data.length * 100);
                 
                 document.getElementById('result-adaptive-time').textContent = Math.round(avgTime) + ' ms';
                 document.getElementById('result-adaptive-error').textContent = errorRate.toFixed(1) + '%';
+            }
+            
+            if (bottomRightExp) {
+                var validTrials = bottomRightExp.data.filter(function(t) { return !t.error; });
+                var avgTime = validTrials.length > 0 ? validTrials.reduce(function(sum, t) { return sum + t.completionTime; }, 0) / validTrials.length : 0;
+                var errorRate = (bottomRightExp.data.filter(function(t) { return t.error; }).length / bottomRightExp.data.length * 100);
+                
+                document.getElementById('result-bottom-time').textContent = Math.round(avgTime) + ' ms';
+                document.getElementById('result-bottom-error').textContent = errorRate.toFixed(1) + '%';
             }
             
             // Auto-upload results
